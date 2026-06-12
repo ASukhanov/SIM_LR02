@@ -1,6 +1,6 @@
 # PoF_SIM_L432
-Firmware for Nucleo L432KC eval board for PoF SIM board.
-Design environment: STM32CubeIde v1.14.0.
+Firmware for Nucleo L432KC eval board for SIM_LR02.
+Design environment: STM32CubeIDE for Visual Studio Code (2026-05-30)
 
 ## Eval Board NUCLEO-L$#!KC, Solder beads
 ![Top layout](Docs/STM32L432_top_layout.jpg)
@@ -9,23 +9,24 @@ Design environment: STM32CubeIde v1.14.0.
 SB9 Off to power from +5V<br>
 Note: SB16 and SB18 are better be OFF, they connect PA6-PB6 and PA5-PB5.<br>
 
-## Pinout
+## Pinout, as defined in firmware/Inc/Board.h
 ```
 //-----------------+-------------------+----------------------------------------
 //    Pins          STM32               Arduino
-#define LED_GREEN   GPIOA,GPIO_PIN_12// D2
-#define LED_RED     GPIOA,GPIO_PIN_7//  A6
-#define LED_BLUE    GPIOA,GPIO_PIN_6//  A5
-#define SIM_A1      GPIOA,GPIO_PIN_11// D10 OpAmp gain
-#define SIM_A0      GPIOA,GPIO_PIN_8//  D9  OpAmp gain
-#define SIM_5V      GPIOC,GPIO_PIN_14// D7  5V_SW. Occupied by RCC_OSC32_OUT
-#define SIM_SW_STATE GPIOB,GPIO_PIN_1// D6
-#define SIM_POW_GOOD GPIOB,GPIO_PIN_6// D5
-#define SIM_BUSY    GPIOB,GPIO_PIN_7//  D4  Not needed. The Busy state can be determined by bit31 of data.
-#define SIM_CS      GPIOB,GPIO_PIN_0//  D3
-#define SIM_SCK     GPIOB,GPIO_PIN_3//  D13 On L432 it is connected to LD3 Green
-#define SIM_MISO    GPIOB,GPIO_PIN_4//  D12
-#define SIM_MOSI    GPIOB,GPIO_PIN_5//  D11
+#define LED_GREEN   LED_GREEN_GPIO_Port,LED_GREEN_Pin// PA12
+#define LED_RED     LED_RED_GPIO_Port,LED_RED_Pin//  PA7
+#define LED_BLUE    LED_BLUE_GPIO_Port,LED_BLUE_Pin//  PA6
+#define SIM_A1      A1_GPIO_Port,A1_Pin// PA11 OpAmp gain
+#define SIM_A0      A0_GPIO_Port,A0_Pin//  PA8  OpAmp gain
+//#define SIM_5V      GPIOC,GPIO_PIN_14// D7  5V_SW. Occupied by RCC_OSC32_OUT
+#define SIM_SW_STATE SW_STATE_GPIO_Port,SW_STATE_Pin// PB1
+#define SIM_POW_GOOD POW_GOOD_GPIO_Port,POW_GOOD_Pin// PB6
+#define SIM_BUSY    BUSY_GPIO_Port,BUSY_Pin//  PB7  Not needed. The Busy state can be determined by bit31 of data.
+#define SIM_CS      CS_GPIO_Port,CS_Pin//  PB0
+// The following pins are not defined in main.h because they are not used by the main.c directly, but only in board.c. They are defined here to keep all pin definitions in one place.
+#define SIM_SCK     GPIOB,GPIO_PIN_3//  PB3 On L432 it is connected to LD3 Green
+#define SIM_MISO    GPIOB,GPIO_PIN_4//  PB4
+#define SIM_MOSI    GPIOB,GPIO_PIN_5//  PB5
 #define SIM_WTX     GPIOA,GPIO_PIN_9//  TX
 #define SIM_WRX     GPIOA,GPIO_PIN_10// RX
 //-----------------+-------------------+----------------------------------------
@@ -38,20 +39,28 @@ SB4-OFF, SB6-ON, SB5-OFF, SB7-OFF, SB8-ON/OFF
 [Nano Connector](Docs/NUCLEO-L432KC_Nano_connector.png)
 
 ## Power Consumption
-Firmware 0.1.4 2024-08-19
-- Whole board, sampling rate 7Hz: **0.25W, 50mA**.
-- Whole board sampling rate 800Hz:  **0.18W**.
+Firmware 1.0.6 2026-06-11
+LR_02 is set for lowest radio power and fastest data rate: Power=0dBm, Level=7.
+The LR_02 supply current is 15 mA. At max power (22dBm) it is 180 mA. 
+- Whole board + DX_LR02: **0.25W, 50mA**. 
 - Standalone STM32L432, SB9 Off, Power from USB: 0.280W, 54mA
 - Standalone STM32L432, SB9 Off, Power from external +5V: 0.060W, 11mA
+
+## Reset
+When Reset button is pressed the receiving LR02 unit should receive LORA packet 
+with baud rate 115200:
+```
+Board init. Version 1.0.6. 
+```
 
 ## Commands
 Communication interface: UART1.
 All data are ASCII strings.
 Format of input commands `<CMD VALUE>`:
 List of legal commands:
-- `<STS?>`: Request board status. The board will respond with following ASCII string:<br>
+- `<STS?>`: Request board status:
 ```
-    Ver 0.1.4 2024-08-19: <TSR:0,TO:160,RL:0,T:1382570,V:0.1.4>
+<TSR:0,TO:160,RL:0,T:247993,V:1.0.6>
 ```
 - `<S Value>`: Set sampling rate of the ADC, Value is in range [0:7].
 - `<R Value>`: Set recLimit, number of samples to transmit to PIM during each reporting interval.
@@ -60,21 +69,23 @@ List of legal commands:
 The actual data delivery interval is the sum of timeout value and the ADC conversion time.
 - `<+5V Value>`: Turn On/Off the +5V switch, legal values: 1/0'
 - `<DBG Value>`: Debugging control. Bit0: enable output to debugging UART2. Bits1,2 extended debugging. 
-- `<G Value>`: Gain selection of the PAmp, legal values: [0:3].
 
 ## Testing/Debugging
 The RS232 with 3.3V levels should be connected: RXD - to PA9 (W_TX), TXD - to PA10 (W_RX).
 
 To communicate with the board over UART1:
 
-    python3 -m serial.tools.miniterm /dev/ttyUSB0 57600
+    python3 -m serial.tools.miniterm /dev/ttyUSB0 115200
 
 The UART2(over USB) sends debugging information, which is copy of the output sream of UART1
 
     python3 -m serial.tools.miniterm /dev/ttyACM0 115200
 
-## Data stream from SIM to PIM.
-The baud rate is the 57600. With ADC sampling rate of 800 Hz, SIM can deliver ~600 samples/s. The standard delivery is statistics over requested period, default 1 s. The statistics data are ASCII like this:
+## Data stream from SIM to receiving modem.
+The baud rate is the 115200. The max radio bit rate of the LR02 is 13Kbit/s
+Reliably it can deliver 50 samples/s.
+The standard delivery is statistics over requested period, default 1 s.
+The statistics data are ASCII like this:
 
     <M498,60,-1340092,993,427,1371015>
     <M498,60,-1339997,1134,576,1372158>
@@ -107,45 +118,3 @@ transfer time overlaps with ADC conversion time.
 Note. The interrrupt driven program may result with higher system noise because 
 of program flow is less synchronous with the ADC sampling. 
 
-## Project status
-### v0.1.1 
-ADC LTC2440 on eval board is supported. RMS reported, RMS ~1 LSB, or 0.3 uV.
-This correspond to dynamic range of 23 bits or 140 dB!
-Noise depends on program flow. For build 0.1.3 the RMS increased to 25 counts.
-For previous builds it was 2.5 counts.
-
-Power consumption from USB with DC570A = 65 mA, 0.32 mW.
-
-Max sampling rate: 800 Hz.
-Max data transfer rate over 57600 Baud serial connection is 572 Hz.
-
-### v0.1.4 2024-08-16. Release
-### v0.3.2 2025-12-20. Latest
-
-## Issues
-### Dependence of the ADC value from sampling rate.
-ADC input shortened. Polling interval 1ms (PI=1).
-
-  S0: <M 7,7,-7195,86,27
-  S1: <M 14,14,-7251,117,50,>
-  S2: <M 27,27,-7384,118,52,>
-  S3: <M 27,27,-7429,121,48,>
-  S4: <M 100,100,-7052,174,132,>
-  S5: <M 166,100,-7835,172,80,>
-  S6: <M 166,100,-5922,147,70,>
-  S7: <M 495,100,-3598,112,52,>
-  S8: <M 495,100,-1607,107,48,>
-
-Here S is sampling rate selector.<br>
-M: number of acquired samples, stat volume, mean*10, stdev*10, peak2peak.
-
-Note, the acquired sampling rate maxes at 495 Hz.
-
-If PI=4ms The data delivery is faster:
-PI=4, S5: <M 198,100,-7940,167,85,>
-
-The opimal setting for 200 Hz data rate: S5, PI=4.
-
-Strange also that stdev drops when S>5.
-
-Observation: This effect almost disappear when running in non-debugging mode.
