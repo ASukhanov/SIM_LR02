@@ -1,10 +1,10 @@
-# PoF_SIM_L432
+# SIM_L432
 Firmware for Nucleo L432KC eval board for SIM_LR02.
 Design environment: STM32CubeIDE for Visual Studio Code (2026-05-30)
 
 ## Eval Board NUCLEO-L$#!KC, Solder beads
-![Top layout](Docs/STM32L432_top_layout.jpg)
-![Bottom layout](Docs/STM32L432_bottom_layout.jpg)
+![Top layout](STM32L432_top_layout.jpg)
+![Bottom layout](STM32L432_bottom_layout.jpg)
 
 SB9 Off to power from +5V<br>
 Note: SB16 and SB18 are better be OFF, they connect PA6-PB6 and PA5-PB5.<br>
@@ -34,9 +34,9 @@ Signal 5V_SW is not used on the SIM.
 If, by some reason, 5V_SW is active, then following switches required:
 SB4-OFF, SB6-ON, SB5-OFF, SB7-OFF, SB8-ON/OFF
 ```
-[Pin Names](Docs/NUCLEO-L432KC_Nano_headersr.png)
+[Pin Names](NUCLEO-L432KC_Nano_headersr.png)
 
-[Nano Connector](Docs/NUCLEO-L432KC_Nano_connector.png)
+[Nano Connector](NUCLEO-L432KC_Nano_connector.png)
 
 ## Power Consumption
 Firmware 1.0.6 2026-06-11
