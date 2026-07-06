@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Support of the PoF SIM board"""
 # pylint: disable=invalid-name
-__version__ = '1.0.1 2026-06-66'# UART timeout = None. The listener thread is blocking, that help with input overrun.
+__version__ = '1.0.1 2026-07-05'# UART timeout = 10
 #get_data_lock removed as it blocks sending commands to SIM, when SIM is waiting for data
 
 import sys
@@ -30,13 +30,15 @@ def croppedText(txt, limit=200):
         txt = txt[:limit]+'...'
     return txt
 def prints(prefix, msg):
+    txt = f'{prefix}_{AppName}@{printTime()}: {msg}'
     try:
-        DevInstance.PV['status'].value = f'{prefix}_{msg}'
+        DevInstance.PV['status'].value = txt
         DevInstance.PV['status'].timestamp = time.time()
         DevInstance.publish()
-    except Exception as e: 
-        print(f'Exception in prints: {e}')
-    print(f'{prefix}_{AppName}@{printTime()}: {msg}')
+    except: pass
+    #except Exception as e: 
+    #    print(f'Exception in prints: {e}')
+    print(txt)
         
 def printi(msg): prints('', msg)
 def printw(msg): prints('WAR', msg)
@@ -52,13 +54,13 @@ def b2i(buf):
 
 def open_serdev():
     #timeout = 0.1
-    timeout = None
+    timeout = 10
     try:
         r = serial.Serial(pargs.tty, pargs.baudrate, timeout=timeout)#writeTimeout=5)
     except serial.SerialException as e:
         printe(f'Could not open {pargs.tty}: {e}')
         sys.exit(1)
-    print(f'Serial timeout: {r.writeTimeout}')
+    printi(f'Serial read timeout: {r.timeout}')
     return r
 
 def decode_sts(txt):
@@ -128,7 +130,9 @@ class Dev(liteserver.Device):
         self.execute_command('STS?')
 
     def stop(self):
-        printi(f'>{AppName}.stop()')
+        print(f'>{AppName}.stop')#TODO: Calling print will block the program!
+        self.PV['status'].set_valueAndTimestamp('')
+        self.PV['msg'].set_valueAndTimestamp('')
     #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 
     def div10(self, pvname):
@@ -238,7 +242,7 @@ class Dev(liteserver.Device):
             return False
 
         elif txt[1] == 'T':
-            print(f'>msg: {txt,ts}')
+            #print(f'>msg: {txt,ts}')
             self.PV['msg'].set_valueAndTimestamp(txt,ts)
             s = txt[2:-1]
             printv(f'msg: {txt}')
@@ -282,11 +286,11 @@ class Dev(liteserver.Device):
             if dt > 10.:
                 ts = time.time()# something funny with the binding, cannot use self.timestamp directly
                 periodic_update = ts
-                msg = f'periodic update {self.name} @{round(self.timestamp,3)}'
                 self.PV['rps'].set_valueAndTimestamp\
                   ((pv_cycle.value[0] - prevCycle)/dt, ts)
                 self.PV['cycle'].timestamp = ts
                 prevCycle = pv_cycle.value[0]
+                printv(f'periodic update {self.name} @{round(self.timestamp,3), self.PV["rps"].value}')
 
             # Wait/Receive data from device
             self.timestamp = time.time()
@@ -305,6 +309,11 @@ class Dev(liteserver.Device):
                 printe(f'ERR: serialException: {e}')
                 SerDev.close()
                 sys.exit(1)
+            if len(payload) == 0:
+                printw(f'No data during {SerDev.timeout} s')
+            else:
+                if 'No data during ' in self.PV['status'].value:
+                    self.PV['status'].set_valueAndTimestamp('')
 
             if not self.initialized:
                 printvv('Initialization not finished')
@@ -315,12 +324,8 @@ class Dev(liteserver.Device):
             if not self.handle_devPacket(payload):
                 continue
 
-            #print('publish all modified parameters of '+self.name)
-            # invalidate timestamps for changing variables, otherwise the
-            # publish() will ignore them
-            #for i in ['cycle']:
-            #    self.PV[i].timestamp = self.timestamp
-            ts = timer()
+            #print('publish all parameters with changed timestamp)
+            #ts = timer()
             shippedBytes = self.publish()
             printv(f'shipped: {shippedBytes}')
         print('########## listener exit ##########')
