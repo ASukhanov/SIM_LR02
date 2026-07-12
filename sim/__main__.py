@@ -290,7 +290,7 @@ class Dev(liteserver.Device):
                   ((pv_cycle.value[0] - prevCycle)/dt, ts)
                 self.PV['cycle'].timestamp = ts
                 prevCycle = pv_cycle.value[0]
-                printv(f'periodic update {self.name} @{round(self.timestamp,3), self.PV["rps"].value}')
+                printv(f'periodic update {self.name}@{[round(i,3) for i in (self.timestamp,self.PV["rps"].value)]}')
 
             # Wait/Receive data from device
             self.timestamp = time.time()
@@ -313,7 +313,7 @@ class Dev(liteserver.Device):
                 printw(f'No data during {SerDev.timeout} s')
             else:
                 if 'No data during ' in self.PV['status'].value:
-                    self.PV['status'].set_valueAndTimestamp('')
+                    self.PV['status'].set_valueAndTimestamp('Data receiving restored')
 
             if not self.initialized:
                 printvv('Initialization not finished')
